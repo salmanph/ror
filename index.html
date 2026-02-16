@@ -24,7 +24,6 @@
     overflow:hidden;
   }
 
-  /* ===== CINEMATIC BACKGROUND ===== */
   .scene{
     position:fixed; inset:0;
     overflow:hidden;
@@ -80,7 +79,27 @@
     opacity:.88;
   }
 
-  /* ===== MAIN CONTENT ===== */
+  .tapRipple{
+    position:absolute;
+    width: 18px; height: 18px;
+    border-radius: 999px;
+    border: 2px solid rgba(243,199,102,.55);
+    box-shadow: 0 0 18px rgba(243,199,102,.25);
+    transform: translate(-50%,-50%) scale(.2);
+    opacity:0;
+    pointer-events:none;
+  }
+
+  .tapRipple.show{
+    animation: ripple 900ms ease forwards;
+  }
+
+  @keyframes ripple{
+    0%{ opacity:.0; transform: translate(-50%,-50%) scale(.2); }
+    15%{ opacity:.9; }
+    100%{ opacity:0; transform: translate(-50%,-50%) scale(18); }
+  }
+
   .wrap{
     position:relative;
     min-height:100vh;
@@ -286,13 +305,13 @@
   }
   .footer b{ color: var(--gold); }
 
-  /* ===== MAGICAL HEART INTRO ===== */
   .intro{
     position:fixed; inset:0;
     z-index:50;
     display:flex;
     align-items:center;
     justify-content:center;
+    cursor:pointer;
     background:
       radial-gradient(900px 520px at 50% 40%, rgba(243,199,102,.10), transparent 62%),
       linear-gradient(160deg, #070a12, #02040b);
@@ -336,7 +355,6 @@
     width: 150px;
     height: 150px;
     margin: 0 auto 10px;
-    cursor:pointer;
     user-select:none;
     filter: drop-shadow(0 18px 26px rgba(0,0,0,.55));
   }
@@ -352,27 +370,12 @@
     fill: #0b0f18;
     stroke: rgba(255,255,255,.10);
     stroke-width: 2;
-    transition: fill .6s ease, transform .25s ease;
-  }
-
-  .heartWrap:active .heartShape{
-    transform: scale(.98);
-    transform-origin: center;
+    transition: fill .6s ease;
   }
 
   .heartRed .heartShape{
     fill: #e53935;
     stroke: rgba(255,246,221,.18);
-  }
-
-  .shine{
-    position:absolute;
-    inset:0;
-    border-radius: 26px;
-    -webkit-mask: radial-gradient(circle at 35% 30%, #000 26%, transparent 27%);
-    mask: radial-gradient(circle at 35% 30%, #000 26%, transparent 27%);
-    pointer-events:none;
-    opacity:.0;
   }
 
   .swipe{
@@ -406,7 +409,6 @@
     width: 10px; height:10px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255,246,221,.95), rgba(243,199,102,.55), transparent 70%);
-    filter: blur(.2px);
     opacity:0;
     transform: translate(-50%,-50%) scale(.6);
   }
@@ -442,7 +444,7 @@
     background: rgba(0,0,0,.28);
     border: 1px solid rgba(255,255,255,.10);
     color: rgba(255,246,221,.86);
-    font-weight: 800;
+    font-weight: 900;
     letter-spacing:.2px;
     font-size: 13px;
   }
@@ -475,6 +477,7 @@
   <div class="scene">
     <div class="bg"></div>
     <div class="stars"></div>
+    <div class="tapRipple" id="tapRipple"></div>
     <div class="vignette"></div>
   </div>
 
@@ -482,14 +485,14 @@
     <div class="introCard">
       <div class="introGlow" aria-hidden="true"></div>
 
-      <div class="heartWrap" id="heartBtn" role="button" aria-label="Clean the heart" tabindex="0">
+      <div class="heartWrap" id="heartBtn">
         <div class="swipe" aria-hidden="true"></div>
 
         <svg class="heart" viewBox="0 0 64 64" aria-hidden="true">
           <path class="heartShape" d="M32 56s-4.7-3.7-8.6-7.1C14.2 41.7 8 35.7 8 27.7 8 20.9 12.9 16 19.7 16c3.7 0 7.2 1.7 9.5 4.4C31.5 17.7 35 16 38.7 16 45.5 16 50.4 20.9 50.4 27.7c0 8-6.2 14-15.4 21.2C36.7 52.3 32 56 32 56z"/>
         </svg>
 
-        <div class="sparkles" aria-hidden="true">
+        <div class="sparkles" aria-hidden="true" id="sparkles">
           <div class="spark" style="left:20%; top:22%; animation-delay:0ms"></div>
           <div class="spark" style="left:68%; top:26%; animation-delay:120ms"></div>
           <div class="spark" style="left:42%; top:40%; animation-delay:220ms"></div>
@@ -500,8 +503,8 @@
       </div>
 
       <div class="introTitle" id="introTitle">A heart needs cleansing ✨</div>
-      <p class="introSub" id="introSub">Click the heart to clean it.</p>
-      <div class="hintLine" id="hintLine">🖤 Tap to cleanse → ❤️</div>
+      <p class="introSub" id="introSub">Tap anywhere to cleanse the heart.</p>
+      <div class="hintLine" id="hintLine">🖤 Tap → ❤️ then your greeting appears</div>
     </div>
   </section>
 
@@ -566,6 +569,8 @@
   const copyBtn = document.getElementById('copyBtn');
   const toast = document.getElementById('toast');
 
+  const tapRipple = document.getElementById('tapRipple');
+
   let started = false;
 
   function showToast(msg){
@@ -579,9 +584,23 @@
     catch(e){ showToast("Add nasheed.mp3 for music"); }
   }
 
-  function startExperience(){
+  function rippleAt(x,y){
+    tapRipple.style.left = x + "px";
+    tapRipple.style.top = y + "px";
+    tapRipple.classList.remove('show');
+    void tapRipple.offsetWidth;
+    tapRipple.classList.add('show');
+  }
+
+  function startExperience(ev){
     if(started) return;
     started = true;
+
+    if(ev && typeof ev.clientX === "number"){
+      rippleAt(ev.clientX, ev.clientY);
+    }else{
+      rippleAt(window.innerWidth/2, window.innerHeight/2);
+    }
 
     heartBtn.classList.add('cleaning');
     introTitle.textContent = "Cleansing… ✨";
@@ -604,10 +623,12 @@
     }, 3000);
   }
 
-  heartBtn.addEventListener('click', startExperience);
-  heartBtn.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter' || e.key === ' ') startExperience();
-  });
+  intro.addEventListener('click', startExperience);
+  intro.addEventListener('touchstart', (e) => {
+    const t = e.touches && e.touches[0];
+    if(t) startExperience({ clientX: t.clientX, clientY: t.clientY });
+    else startExperience();
+  }, {passive:true});
 
   playBtn.addEventListener('click', startAudio);
   pauseBtn.addEventListener('click', () => audio.pause());
